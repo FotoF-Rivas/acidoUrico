@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+<title>Consultor de Ácido Úrico</title>
+
+<!-- PWA -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#b5862a" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Ácido Úrico" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" sizes="152x152" href="icons/icon-152.png" />
+<link rel="apple-touch-icon" sizes="144x144" href="icons/icon-144.png" />
+<link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png" />
+
+<!-- Fonts -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f5f0e8;
+    --surface: #fdfaf4;
+    --ink: #1a1510;
+    --ink-soft: #6b5f4e;
+    --accent: #b5862a;
+    --border: #e0d5c0;
+    --red-bg: #fff0ee;
+    --red-border: #f5c0b5;
+    --red-badge: #c0391b;
+    --orange-bg: #fff8ee;
+    --orange-border: #f5dca0;
+    --orange-badge: #d07518;
+    --green-bg: #eef8f0;
+    --green-border: #b0ddb8;
+    --green-badge: #2a9444;
+  }
+
+  body {
+    background: var(--bg);
+    font-family: 'DM Sans', sans-serif;
+    color: var(--ink);
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 48px 20px 80px;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(181,134,42,0.07) 0%, transparent 50%),
+      radial-gradient(circle at 85% 75%, rgba(42,148,68,0.06) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; width: 100%; max-width: 580px; }
+
+  header { text-align: center; margin-bottom: 44px; }
+
+  .eyebrow {
+    display: inline-block;
+    font-size: 11px; font-weight: 600;
+    letter-spacing: 0.18em; text-transform: uppercase;
+    color: var(--accent);
+    background: rgba(181,134,42,0.1);
+    border: 1px solid rgba(181,134,42,0.25);
+    padding: 5px 14px; border-radius: 100px; margin-bottom: 18px;
+  }
+
+  h1 {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(1.9rem, 6vw, 2.7rem);
+    line-height: 1.15; color: var(--ink); letter-spacing: -0.01em;
+  }
+  h1 em { font-style: italic; color: var(--accent); }
+
+  .subtitle { margin-top: 12px; font-size: 15px; color: var(--ink-soft); font-weight: 300; line-height: 1.6; }
+
+  .card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 20px; padding: 32px;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+  }
+
+  .input-group { display: flex; flex-direction: column; gap: 11px; }
+
+  label { font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--ink-soft); }
+
+  .search-row { display: flex; gap: 10px; }
+
+  .autocomplete-wrapper { position: relative; flex: 1; }
+
+  input[type="text"] {
+    width: 100%; padding: 15px 18px;
+    font-family: 'DM Sans', sans-serif; font-size: 16px;
+    color: var(--ink); background: var(--bg);
+    border: 1.5px solid var(--border); border-radius: 12px;
+    outline: none; transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  input[type="text"]::placeholder { color: #b0a590; }
+  input[type="text"]:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(181,134,42,0.12); }
+
+  .suggestions {
+    display: none; position: absolute;
+    top: calc(100% + 6px); left: 0; right: 0;
+    background: var(--surface); border: 1.5px solid var(--border);
+    border-radius: 12px; box-shadow: 0 8px 24px rgba(0,0,0,0.1);
+    z-index: 100; max-height: 220px; overflow-y: auto;
+  }
+  .suggestions.open { display: block; }
+
+  .suggestion-item {
+    padding: 11px 16px; cursor: pointer; font-size: 14.5px;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.12s; text-transform: capitalize;
+  }
+  .suggestion-item:last-child { border-bottom: none; }
+  .suggestion-item:hover { background: var(--bg); }
+
+  .sug-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+  .sug-dot.prohibited { background: var(--red-badge); }
+  .sug-dot.caution    { background: var(--orange-badge); }
+  .sug-dot.acceptable { background: var(--green-badge); }
+
+  button.check-btn {
+    padding: 15px 22px;
+    font-family: 'DM Sans', sans-serif; font-size: 15px; font-weight: 600;
+    color: #fff; background: var(--ink); border: none; border-radius: 12px;
+    cursor: pointer; transition: background 0.2s, transform 0.1s, box-shadow 0.2s;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.18); white-space: nowrap;
+  }
+  button.check-btn:hover { background: #2e2418; box-shadow: 0 4px 20px rgba(0,0,0,0.22); }
+  button.check-btn:active { transform: scale(0.98); }
+
+  .legend { display: flex; justify-content: center; gap: 18px; margin-top: 22px; flex-wrap: wrap; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink-soft); font-weight: 500; }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  .db-count { text-align: center; margin-top: 10px; font-size: 11.5px; color: var(--ink-soft); opacity: 0.7; }
+
+  .divider {
+    display: flex; align-items: center; gap: 14px;
+    margin: 26px 0; font-size: 12px; color: var(--ink-soft);
+  }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+  #result { display: none; animation: fadeUp 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+  .result-box { border-radius: 16px; padding: 26px; border: 1.5px solid; }
+  .result-box.prohibited { background: var(--red-bg);    border-color: var(--red-border); }
+  .result-box.caution    { background: var(--orange-bg); border-color: var(--orange-border); }
+  .result-box.acceptable { background: var(--green-bg);  border-color: var(--green-border); }
+  .result-box.not-found  { background: #f8f5f0;          border-color: var(--border); }
+
+  .result-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+
+  .food-name { font-family: 'DM Serif Display', serif; font-size: 1.45rem; line-height: 1.2; color: var(--ink); text-transform: capitalize; }
+
+  .badge {
+    flex-shrink: 0; display: inline-flex; align-items: center; gap: 6px;
+    padding: 6px 13px; border-radius: 100px;
+    font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
+    text-transform: uppercase; color: #fff;
+  }
+  .badge.prohibited { background: var(--red-badge); }
+  .badge.caution    { background: var(--orange-badge); }
+  .badge.acceptable { background: var(--green-badge); }
+  .badge.not-found  { background: var(--ink-soft); }
+  .badge-dot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.55); }
+
+  .result-explanation { font-size: 14.5px; line-height: 1.65; color: var(--ink-soft); padding-top: 14px; border-top: 1px solid rgba(0,0,0,0.08); }
+  .result-icon { font-size: 1.8rem; margin-bottom: 4px; }
+
+  .footer-note { text-align: center; margin-top: 28px; font-size: 12px; color: var(--ink-soft); line-height: 1.7; }
+</style>
+</head>
+<body>
+<div class="wrapper">
+  <header>
+    <div class="eyebrow">Nutrición &amp; Salud</div>
+    <h1>Consultor de<br/><em>Ácido Úrico</em></h1>
+    <p class="subtitle">Escribe cualquier alimento y descubre al instante<br/>si es seguro, moderado o mejor evitarlo.</p>
+  </header>
+
+  <div class="card">
+    <div class="input-group">
+      <label for="foodInput">Nombre del alimento</label>
+      <div class="search-row">
+        <div class="autocomplete-wrapper">
+          <input type="text" id="foodInput" placeholder="ej. sardinas, huevo, pollo…" autocomplete="off" />
+          <div class="suggestions" id="suggestions"></div>
+        </div>
+        <button class="check-btn" onclick="checkFood()">Consultar</button>
+      </div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="legend-dot" style="background:var(--red-badge)"></span>Prohibido</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--orange-badge)"></span>Con moderación</span>
+      <span class="legend-item"><span class="legend-dot" style="background:var(--green-badge)"></span>Permitido</span>
+    </div>
+    <p class="db-count" id="dbCount"></p>
+    <div class="divider">resultado</div>
+    <div id="result"></div>
+  </div>
+
+  <p class="footer-note">
+    Esta herramienta es solo informativa.<br/>
+    Consulta siempre a tu médico o nutricionista para orientación personalizada.
+  </p>
+
+  <button id="installBtn" style="display:none; margin-top:20px; align-items:center; gap:10px;
+    padding:14px 24px; font-family:'DM Sans',sans-serif; font-size:14px; font-weight:600;
+    color:var(--accent); background:rgba(181,134,42,0.1); border:1.5px solid rgba(181,134,42,0.35);
+    border-radius:12px; cursor:pointer; transition:background 0.2s;">
+    📲 Instalar app en el móvil
+  </button>
+</div>
+
+<script>
+const foodDatabase = {
+  // ══════════════════════════════════════
+  //  PROHIBIDOS
+  // ══════════════════════════════════════
+  "higado":               {c:"prohibited", r:"Las vísceras como el hígado tienen concentraciones de purinas extremadamente altas y deben evitarse por completo."},
+  "hígado":               {c:"prohibited", r:"Las vísceras como el hígado tienen concentraciones de purinas extremadamente altas y deben evitarse por completo."},
+  "hígado de ternera":    {c:"prohibited", r:"El hígado de ternera es una víscera con uno de los contenidos de purinas más altos; está totalmente contraindicado."},
+  "higado de ternera":    {c:"prohibited", r:"El hígado de ternera es una víscera con uno de los contenidos de purinas más altos; está totalmente contraindicado."},
+  "hígado de pollo":      {c:"prohibited", r:"El hígado de pollo tiene purinas muy elevadas y debe evitarse completamente."},
+  "higado de pollo":      {c:"prohibited", r:"El hígado de pollo tiene purinas muy elevadas y debe evitarse completamente."},
+  "riñon":                {c:"prohibited", r:"El riñón es uno de los alimentos con mayor concentración de purinas; está totalmente contraindicado."},
+  "riñón":                {c:"prohibited", r:"El riñón es uno de los alimentos con mayor concentración de purinas; está totalmente contraindicado."},
+  "rinon":                {c:"prohibited", r:"El riñón es uno de los alimentos con mayor concentración de purinas; está totalmente contraindicado."},
+  "riñones":              {c:"prohibited", r:"Los riñones son vísceras con niveles de purinas muy elevados que disparan el ácido úrico."},
+  "molleja":              {c:"prohibited", r:"Las mollejas (timo o páncreas) son vísceras muy ricas en purinas; deben evitarse estrictamente."},
+  "callos":               {c:"prohibited", r:"Los callos (tripas) son vísceras con alto contenido en purinas; deben eliminarse de la dieta."},
+  "sesos":                {c:"prohibited", r:"Los sesos son una víscera con purinas muy altas; su consumo puede provocar crisis de gota."},
+  "higadillos":           {c:"prohibited", r:"Los higadillos de pollo son vísceras con altísimo contenido en purinas."},
+  "higadillos de pollo":  {c:"prohibited", r:"Los higadillos de pollo son vísceras con altísimo contenido en purinas."},
+  "morcilla":             {c:"prohibited", r:"La morcilla, elaborada con sangre y vísceras, es muy alta en purinas y debe evitarse."},
+  "pate":                 {c:"prohibited", r:"El paté contiene hígado y otras vísceras, lo que lo convierte en un alimento muy rico en purinas."},
+  "paté":                 {c:"prohibited", r:"El paté contiene hígado y otras vísceras, lo que lo convierte en un alimento muy rico en purinas."},
+  "foie gras":            {c:"prohibited", r:"El foie gras es hígado graso con una concentración de purinas extremadamente alta."},
+  "foie":                 {c:"prohibited", r:"El foie (hígado graso) tiene una concentración de purinas extremadamente alta."},
+
+  "sardinas":             {c:"prohibited", r:"Las sardinas tienen uno de los contenidos de purinas más altos entre los pescados y deben evitarse."},
+  "sardina":              {c:"prohibited", r:"La sardina es muy rica en purinas y debe eliminarse de la dieta en la hiperuricemia."},
+  "anchoas":              {c:"prohibited", r:"Las anchoas concentran niveles de purinas muy elevados y son un desencadenante frecuente de la gota."},
+  "anchoa":               {c:"prohibited", r:"La anchoa es muy rica en purinas; un desencadenante habitual de los ataques de gota."},
+  "boquerones":           {c:"prohibited", r:"Los boquerones son muy ricos en purinas y pueden elevar significativamente el ácido úrico."},
+  "boquerón":             {c:"prohibited", r:"El boquerón tiene un contenido de purinas muy alto y debe evitarse."},
+  "caballa":              {c:"prohibited", r:"La caballa es un pescado azul con muy alto contenido en purinas; debe eliminarse de la dieta."},
+  "arenque":              {c:"prohibited", r:"El arenque contiene niveles de purinas muy elevados; es uno de los pescados más contraindicados."},
+  "espadín":              {c:"prohibited", r:"El espadín, similar a la sardina, tiene purinas muy altas y debe evitarse."},
+  "trucha":               {c:"prohibited", r:"La trucha presenta niveles de purinas elevados y está desaconsejada en la hiperuricemia."},
+  "mejillones":           {c:"prohibited", r:"Los mejillones tienen un contenido de purinas muy alto para un marisco y deben evitarse."},
+  "mejillón":             {c:"prohibited", r:"El mejillón es muy rico en purinas y debe evitarse."},
+  "berberechos":          {c:"prohibited", r:"Los berberechos son ricos en purinas y pueden desencadenar ataques de gota."},
+  "berberecho":           {c:"prohibited", r:"El berberecho tiene alto contenido en purinas; conviene eliminarlo de la dieta."},
+  "almejas":              {c:"prohibited", r:"Las almejas tienen un contenido de purinas elevado; mejor evitarlas."},
+  "almeja":               {c:"prohibited", r:"La almeja es alta en purinas y debe evitarse en la hiperuricemia."},
+  "navajas":              {c:"prohibited", r:"Las navajas son moluscos con alto contenido en purinas; mejor evitarlas."},
+  "navaja":               {c:"prohibited", r:"La navaja tiene alto contenido en purinas; debe evitarse."},
+  "caracoles":            {c:"prohibited", r:"Los caracoles concentran niveles de purinas bastante altos; se desaconsejan en la hiperuricemia."},
+  "caracol":              {c:"prohibited", r:"El caracol tiene un contenido de purinas elevado y debe evitarse."},
+  "pulpo":                {c:"prohibited", r:"El pulpo tiene un contenido de purinas elevado y debe evitarse o consumirse muy ocasionalmente."},
+  "sepia":                {c:"prohibited", r:"La sepia, como otros cefalópodos, es alta en purinas y conviene evitarla."},
+  "calamar":              {c:"prohibited", r:"El calamar contiene niveles de purinas considerables y debe limitarse o eliminarse de la dieta."},
+  "chipirón":             {c:"prohibited", r:"El chipirón (calamar pequeño) es alto en purinas y debe evitarse."},
+  "chipirones":           {c:"prohibited", r:"Los chipirones son ricos en purinas y deben evitarse en la hiperuricemia."},
+
+  "caza":                 {c:"prohibited", r:"Las carnes de caza (venado, jabalí, liebre…) son muy ricas en purinas por su alta densidad muscular."},
+  "venado":               {c:"prohibited", r:"El venado es una carne de caza con concentración de purinas muy elevada."},
+  "jabali":               {c:"prohibited", r:"El jabalí tiene niveles de purinas muy altos y debe evitarse completamente."},
+  "jabalí":               {c:"prohibited", r:"El jabalí tiene niveles de purinas muy altos y debe evitarse completamente."},
+  "liebre":               {c:"prohibited", r:"La liebre es una carne de caza rica en purinas; está contraindicada en la hiperuricemia."},
+  "codorniz":             {c:"prohibited", r:"La codorniz, especialmente las vísceras, tiene un contenido de purinas elevado."},
+  "embutidos":            {c:"prohibited", r:"Los embutidos concentran carne procesada con alto contenido en purinas y sodio; deben evitarse."},
+  "embutido":             {c:"prohibited", r:"El embutido, al ser carne procesada, concentra purinas y aditivos perjudiciales."},
+  "salchichón":           {c:"prohibited", r:"El salchichón es un embutido curado con alto contenido en purinas y grasas saturadas."},
+  "chorizo":              {c:"prohibited", r:"El chorizo contiene carnes y grasas con alto contenido en purinas; debe evitarse."},
+  "jamón serrano":        {c:"prohibited", r:"El jamón serrano, al concentrar la proteína animal, es rico en purinas; mejor evitarlo."},
+  "jamón":                {c:"prohibited", r:"El jamón (tanto serrano como cocido) tiene un contenido considerable de purinas; mejor evitarlo."},
+  "jamon":                {c:"prohibited", r:"El jamón tiene un contenido considerable de purinas; mejor evitarlo."},
+  "salami":               {c:"prohibited", r:"El salami es un embutido graso y rico en purinas que debe eliminarse de la dieta."},
+  "butifarra":            {c:"prohibited", r:"La butifarra puede contener vísceras y tiene un contenido de purinas alto."},
+  "mortadela":            {c:"prohibited", r:"La mortadela contiene carnes procesadas con moderado-alto contenido en purinas."},
+  "salchicha":            {c:"prohibited", r:"Las salchichas son un embutido procesado con alto contenido en purinas y aditivos."},
+  "salchichas":           {c:"prohibited", r:"Las salchichas son embutidos procesados con alto contenido en purinas; deben evitarse."},
+  "frankfurt":            {c:"prohibited", r:"Las salchichas tipo frankfurt son muy procesadas y ricas en purinas; deben evitarse."},
+
+  "cerveza":              {c:"prohibited", r:"La cerveza es la bebida más perjudicial: tiene purinas de la levadura y el alcohol impide excretar el ácido úrico."},
+  "alcohol":              {c:"prohibited", r:"El alcohol en general interfiere con la eliminación renal del ácido úrico y puede desencadenar crisis de gota."},
+  "licor":                {c:"prohibited", r:"Los licores destilados reducen la capacidad del riñón para excretar ácido úrico."},
+  "whisky":               {c:"prohibited", r:"El whisky, como todos los destilados, dificulta la excreción renal del ácido úrico."},
+  "ron":                  {c:"prohibited", r:"El ron es un destilado que eleva el ácido úrico al reducir su excreción renal."},
+  "ginebra":              {c:"prohibited", r:"La ginebra, como destilado, impide que el riñón elimine correctamente el ácido úrico."},
+  "vodka":                {c:"prohibited", r:"El vodka, como todo el alcohol, eleva los niveles de ácido úrico en sangre."},
+
+  "extracto de carne":    {c:"prohibited", r:"Los extractos de carne concentran purinas en niveles muy altos; deben evitarse."},
+  "caldo de carne":       {c:"prohibited", r:"El caldo de carne concentra las purinas liberadas durante la cocción; está contraindicado."},
+  "consomé":              {c:"prohibited", r:"El consomé es un caldo concentrado muy rico en purinas; está contraindicado."},
+  "consome":              {c:"prohibited", r:"El consomé es un caldo concentrado muy rico en purinas; está contraindicado."},
+  "pastilla de caldo":    {c:"prohibited", r:"Las pastillas de caldo concentran purinas a niveles muy altos; deben evitarse."},
+
+  "refrescos":            {c:"prohibited", r:"Los refrescos azucarados con fructosa de alta concentración pueden elevar el ácido úrico de forma importante."},
+  "refresco":             {c:"prohibited", r:"Los refrescos azucarados contienen fructosa que puede elevar significativamente el ácido úrico."},
+  "cola":                 {c:"prohibited", r:"Las bebidas de cola contienen fructosa y aditivos que pueden elevar el ácido úrico."},
+  "coca cola":            {c:"prohibited", r:"La Coca-Cola contiene fructosa que puede elevar significativamente el ácido úrico."},
+  "fructosa":             {c:"prohibited", r:"La fructosa en exceso (zumos industriales, bebidas azucaradas) puede elevar significativamente el ácido úrico."},
+
+  // ══════════════════════════════════════
+  //  CON MODERACIÓN
+  // ══════════════════════════════════════
+  "ternera":              {c:"caution", r:"La ternera tiene un contenido moderado de purinas; raciones pequeñas y ocasionales son generalmente toleradas."},
+  "buey":                 {c:"caution", r:"La carne de buey tiene purinas moderadas; puede consumirse esporádicamente en pequeñas cantidades."},
+  "cerdo":                {c:"caution", r:"El cerdo tiene un nivel moderado de purinas; las raciones pequeñas y poco frecuentes son preferibles."},
+  "carne de cerdo":       {c:"caution", r:"La carne de cerdo tiene un nivel moderado de purinas; las raciones pequeñas y poco frecuentes son preferibles."},
+  "cordero":              {c:"caution", r:"El cordero es una carne roja con purinas moderadas-altas; consúmelo ocasionalmente y en poca cantidad."},
+  "lechazo":              {c:"caution", r:"El lechazo (cordero lechal) tiene purinas moderadas; consúmelo ocasionalmente y en pequeñas porciones."},
+  "pollo":                {c:"caution", r:"El pollo tiene purinas moderadas; las piezas magras en raciones pequeñas son generalmente toleradas."},
+  "pechuga de pollo":     {c:"caution", r:"La pechuga de pollo es la parte más magra y tiene purinas moderadas; tolerable en pequeñas porciones."},
+  "muslo de pollo":       {c:"caution", r:"El muslo de pollo tiene algo más de purinas que la pechuga; consúmelo con moderación."},
+  "pavo":                 {c:"caution", r:"El pavo contiene purinas moderadas; pequeñas raciones ocasionales son razonables."},
+  "conejo":               {c:"caution", r:"El conejo tiene purinas moderadas-altas; es preferible limitar su consumo."},
+  "pato":                 {c:"caution", r:"El pato tiene un contenido de purinas moderado-alto; consúmelo muy ocasionalmente."},
+
+  "atún":                 {c:"caution", r:"El atún tiene un contenido de purinas moderado-alto; limita su consumo y elige el enlatado al natural."},
+  "atun":                 {c:"caution", r:"El atún tiene un contenido de purinas moderado-alto; limita su consumo y elige el enlatado al natural."},
+  "atún en lata":         {c:"caution", r:"El atún en conserva tiene purinas moderadas; una ración pequeña ocasional es generalmente tolerable."},
+  "salmon":               {c:"caution", r:"El salmón tiene purinas moderadas; sus omega-3 son saludables pero debe consumirse con mesura."},
+  "salmón":               {c:"caution", r:"El salmón tiene purinas moderadas; sus omega-3 son saludables pero debe consumirse con mesura."},
+  "bacalao":              {c:"caution", r:"El bacalao tiene un contenido de purinas moderado; consúmelo ocasionalmente en raciones pequeñas."},
+  "merluza":              {c:"caution", r:"La merluza tiene purinas moderadas; puede incluirse esporádicamente en la dieta en pequeñas porciones."},
+  "lubina":               {c:"caution", r:"La lubina tiene un contenido moderado de purinas; las raciones pequeñas y ocasionales son aceptables."},
+  "dorada":               {c:"caution", r:"La dorada tiene purinas moderadas; puede consumirse de vez en cuando en pequeñas cantidades."},
+  "rape":                 {c:"caution", r:"El rape tiene purinas moderadas; una ración pequeña y ocasional es tolerable."},
+  "lenguado":             {c:"caution", r:"El lenguado tiene un contenido moderado de purinas; tolerable en raciones pequeñas."},
+  "besugo":               {c:"caution", r:"El besugo tiene purinas moderadas; consúmelo con moderación y en porciones pequeñas."},
+  "pez espada":           {c:"caution", r:"El pez espada tiene purinas moderadas-altas; limita su consumo."},
+  "emperador":            {c:"caution", r:"El emperador (pez espada) tiene purinas moderadas-altas; limita su consumo."},
+
+  "gambas":               {c:"caution", r:"Las gambas tienen purinas moderadas; consúmelas en pequeñas cantidades y de forma ocasional."},
+  "gamba":                {c:"caution", r:"La gamba tiene purinas moderadas; tómala de forma muy ocasional y en pequeñas cantidades."},
+  "langostinos":          {c:"caution", r:"Los langostinos tienen un contenido moderado de purinas; modera su consumo."},
+  "langostino":           {c:"caution", r:"El langostino tiene purinas moderadas; consúmelo de forma ocasional."},
+  "camarones":            {c:"caution", r:"Los camarones tienen purinas moderadas; una pequeña ración ocasional es generalmente tolerada."},
+  "bogavante":            {c:"caution", r:"El bogavante tiene purinas moderadas; las raciones pequeñas y ocasionales son aceptables."},
+  "langosta":             {c:"caution", r:"La langosta tiene niveles moderados de purinas; puede consumirse esporádicamente."},
+  "buey de mar":          {c:"caution", r:"El buey de mar tiene purinas moderadas; tolerable en pequeñas cantidades y de forma ocasional."},
+  "cangrejo":             {c:"caution", r:"El cangrejo tiene un contenido moderado de purinas; modera su consumo."},
+  "centollo":             {c:"caution", r:"El centollo tiene purinas moderadas; consúmelo de forma muy ocasional."},
+
+  "espinacas":            {c:"caution", r:"Las espinacas tienen purinas moderadas, aunque las purinas vegetales tienen menos impacto que las animales."},
+  "espinaca":             {c:"caution", r:"La espinaca tiene purinas moderadas; pequeñas cantidades son generalmente toleradas."},
+  "esparragos":           {c:"caution", r:"Los espárragos contienen purinas moderadas; las raciones pequeñas y ocasionales son aceptables."},
+  "espárragos":           {c:"caution", r:"Los espárragos contienen purinas moderadas; las raciones pequeñas y ocasionales son aceptables."},
+  "esparrago":            {c:"caution", r:"El espárrago tiene purinas moderadas; consúmelo con moderación."},
+  "espárrago":            {c:"caution", r:"El espárrago tiene purinas moderadas; consúmelo con moderación."},
+  "champiñones":          {c:"caution", r:"Los champiñones tienen purinas moderadas; pequeñas cantidades ocasionales suelen tolerarse bien."},
+  "champiñón":            {c:"caution", r:"El champiñón tiene purinas moderadas; consúmelo en pequeñas cantidades."},
+  "champiñon":            {c:"caution", r:"El champiñón tiene purinas moderadas; consúmelo en pequeñas cantidades."},
+  "setas":                {c:"caution", r:"Las setas tienen un contenido de purinas moderado; consúmelas en pequeñas porciones."},
+  "seta":                 {c:"caution", r:"La seta tiene un contenido de purinas moderado; consúmela con moderación."},
+  "coliflor":             {c:"caution", r:"La coliflor tiene purinas moderadas entre las verduras; raciones razonables son aceptables."},
+  "guisantes":            {c:"caution", r:"Los guisantes tienen purinas moderadas; las purinas vegetales tienen menor impacto pero conviene moderarlos."},
+  "guisante":             {c:"caution", r:"El guisante tiene purinas moderadas; tómalo con moderación."},
+  "habas":                {c:"caution", r:"Las habas contienen purinas moderadas; es preferible consumirlas en pequeñas cantidades."},
+  "haba":                 {c:"caution", r:"La haba tiene purinas moderadas; consúmela en pequeñas cantidades."},
+  "acelgas":              {c:"caution", r:"Las acelgas tienen un contenido moderado de purinas; pequeñas porciones son generalmente toleradas."},
+  "acelga":               {c:"caution", r:"La acelga tiene purinas moderadas; pequeñas porciones son generalmente toleradas."},
+
+  "lentejas":             {c:"caution", r:"Las lentejas tienen purinas moderadas; las purinas vegetales son menos problemáticas, pero conviene moderarlas."},
+  "lenteja":              {c:"caution", r:"La lenteja tiene purinas moderadas; fuente vegetal bien tolerada pero a moderar."},
+  "alubias":              {c:"caution", r:"Las alubias tienen purinas moderadas; las fuentes vegetales son mejor toleradas que las animales."},
+  "alubia":               {c:"caution", r:"La alubia tiene purinas moderadas; las legumbres son mejor toleradas que las carnes."},
+  "judias":               {c:"caution", r:"Las judías tienen un contenido moderado de purinas; consúmelas con moderación."},
+  "judías":               {c:"caution", r:"Las judías tienen un contenido moderado de purinas; consúmelas con moderación."},
+  "judía":                {c:"caution", r:"La judía tiene purinas moderadas; fuente vegetal a consumir con moderación."},
+  "frijoles":             {c:"caution", r:"Los frijoles tienen purinas moderadas; las legumbres son mejor toleradas que las carnes."},
+  "garbanzos":            {c:"caution", r:"Los garbanzos tienen purinas moderadas; tolerable en pequeñas porciones."},
+  "garbanzo":             {c:"caution", r:"El garbanzo tiene purinas moderadas; consúmelo con moderación."},
+  "soja":                 {c:"caution", r:"La soja tiene purinas moderadas, aunque las purinas vegetales tienen un impacto menor en el ácido úrico."},
+
+  "avena":                {c:"caution", r:"La avena contiene purinas moderadas; una ración razonable en el desayuno es generalmente aceptable."},
+  "copos de avena":       {c:"caution", r:"Los copos de avena tienen purinas moderadas; una ración al día es habitualmente tolerable."},
+  "germen de trigo":      {c:"caution", r:"El germen de trigo concentra purinas moderadas; conviene limitar su consumo."},
+  "levadura":             {c:"caution", r:"La levadura de cerveza es rica en purinas; debe consumirse con mucha precaución."},
+  "levadura de cerveza":  {c:"caution", r:"La levadura de cerveza concentra purinas elevadas; mejor evitarla."},
+
+  "vino":                 {c:"caution", r:"El vino tiene menos purinas que la cerveza, pero el alcohol impide la excreción del ácido úrico; tómalo muy raramente."},
+  "vino tinto":           {c:"caution", r:"El vino tinto tiene resveratrol antiinflamatorio, pero el alcohol sigue siendo perjudicial para el ácido úrico."},
+  "vino blanco":          {c:"caution", r:"El vino blanco tiene menos purinas que la cerveza, pero el alcohol dificulta la eliminación del ácido úrico."},
+  "cava":                 {c:"caution", r:"El cava es una bebida alcohólica con purinas moderadas; su consumo debe ser muy ocasional."},
+  "champan":              {c:"caution", r:"El champán es una bebida alcohólica; el alcohol dificulta la eliminación del ácido úrico."},
+  "champán":              {c:"caution", r:"El champán es una bebida alcohólica; el alcohol dificulta la eliminación del ácido úrico."},
+
+  "chocolate":            {c:"caution", r:"El chocolate tiene purinas moderadas; el negro en pequeñas cantidades es preferible al con leche."},
+  "chocolate negro":      {c:"caution", r:"El chocolate negro tiene purinas moderadas; una pequeña ración ocasional es generalmente tolerable."},
+  "cacao":                {c:"caution", r:"El cacao tiene purinas moderadas; pequeñas cantidades en preparaciones sin azúcar son aceptables."},
+  "azucar":               {c:"caution", r:"El azúcar no tiene purinas, pero el exceso de fructosa puede elevar el ácido úrico; limita su consumo."},
+  "azúcar":               {c:"caution", r:"El azúcar no tiene purinas, pero el exceso de fructosa puede elevar el ácido úrico; limita su consumo."},
+
+  // ══════════════════════════════════════
+  //  PERMITIDOS
+  // ══════════════════════════════════════
+
+  // Lácteos
+  "leche":                {c:"acceptable", r:"La leche es muy baja en purinas y el consumo de lácteos se asocia con menor riesgo de gota."},
+  "leche desnatada":      {c:"acceptable", r:"La leche desnatada es especialmente recomendada: baja en purinas y ayuda a excretar el ácido úrico."},
+  "leche semidesnatada":  {c:"acceptable", r:"La leche semidesnatada es baja en purinas y una buena opción de bebida láctea."},
+  "yogur":                {c:"acceptable", r:"El yogur es bajo en purinas; los probióticos pueden favorecer la salud intestinal y renal."},
+  "yogurt":               {c:"acceptable", r:"El yogur es bajo en purinas; los probióticos pueden favorecer la salud intestinal y renal."},
+  "yogur natural":        {c:"acceptable", r:"El yogur natural sin azúcar es un alimento lácteo muy recomendable en la hiperuricemia."},
+  "queso":                {c:"acceptable", r:"La mayoría de los quesos son bajos en purinas y seguros para personas con hiperuricemia."},
+  "queso fresco":         {c:"acceptable", r:"El queso fresco es muy bajo en purinas y una excelente opción proteica."},
+  "requesón":             {c:"acceptable", r:"El requesón es bajo en purinas y una fuente de proteína láctea muy recomendable."},
+  "requesón":             {c:"acceptable", r:"El requesón es bajo en purinas y una fuente de proteína láctea muy recomendable."},
+  "mozzarella":           {c:"acceptable", r:"La mozzarella es un queso bajo en purinas y seguro para incluir en la dieta."},
+  "queso manchego":       {c:"acceptable", r:"El queso manchego es bajo en purinas y puede consumirse con moderación."},
+  "mantequilla":          {c:"acceptable", r:"La mantequilla es prácticamente libre de purinas; úsala con moderación por su contenido graso."},
+  "nata":                 {c:"acceptable", r:"La nata tiene muy pocas purinas; modera su uso por su alto contenido en grasas saturadas."},
+  "kefir":                {c:"acceptable", r:"El kéfir es bajo en purinas y sus probióticos son beneficiosos para la salud intestinal."},
+  "kéfir":                {c:"acceptable", r:"El kéfir es bajo en purinas y sus probióticos son beneficiosos para la salud intestinal."},
+
+  // Huevos
+  "huevo":                {c:"acceptable", r:"El huevo es una de las fuentes proteicas más bajas en purinas y puede consumirse con regularidad."},
+  "huevos":               {c:"acceptable", r:"Los huevos son muy bajos en purinas y una excelente alternativa proteica a las carnes."},
+  "huevo cocido":         {c:"acceptable", r:"El huevo cocido es bajo en purinas y una forma muy saludable de consumirlo."},
+  "huevo duro":           {c:"acceptable", r:"El huevo duro es bajo en purinas y una opción proteica muy conveniente."},
+  "huevo frito":          {c:"acceptable", r:"El huevo frito es bajo en purinas; el aceite de fritura no añade purinas."},
+  "tortilla":             {c:"acceptable", r:"La tortilla de huevo es baja en purinas; evita añadir embutidos u otros ingredientes ricos en purinas."},
+  "tortilla de patatas":  {c:"acceptable", r:"La tortilla de patatas (huevo y patata) es baja en purinas y un plato muy adecuado."},
+  "tortilla francesa":    {c:"acceptable", r:"La tortilla francesa es muy baja en purinas y una opción proteica excelente."},
+  "revuelto":             {c:"acceptable", r:"Los huevos revueltos son bajos en purinas; elige acompañamientos también bajos en purinas."},
+
+  // Cereales y carbohidratos
+  "arroz":                {c:"acceptable", r:"El arroz es muy bajo en purinas y un hidrato de carbono excelente para la hiperuricemia."},
+  "arroz blanco":         {c:"acceptable", r:"El arroz blanco es bajo en purinas y una base perfecta para platos equilibrados."},
+  "arroz integral":       {c:"acceptable", r:"El arroz integral es bajo en purinas y aporta más fibra que el blanco."},
+  "pan":                  {c:"acceptable", r:"El pan es bajo en purinas y puede incluirse a diario en la dieta."},
+  "pan blanco":           {c:"acceptable", r:"El pan blanco es muy bajo en purinas y una fuente segura de energía."},
+  "pan integral":         {c:"acceptable", r:"El pan integral es bajo en purinas y añade fibra beneficiosa para la digestión."},
+  "baguete":              {c:"acceptable", r:"La baguete es baja en purinas y puede consumirse a diario."},
+  "tostada":              {c:"acceptable", r:"La tostada de pan es baja en purinas; cuida los acompañamientos que eliges."},
+  "pasta":                {c:"acceptable", r:"La pasta es baja en purinas y una buena fuente de energía de liberación lenta."},
+  "macarrones":           {c:"acceptable", r:"Los macarrones son bajos en purinas; elige salsas sin carnes rojas ni embutidos."},
+  "espaguetis":           {c:"acceptable", r:"Los espaguetis son bajos en purinas y un alimento seguro para incluir habitualmente."},
+  "fideos":               {c:"acceptable", r:"Los fideos son bajos en purinas y una opción segura en sopas y guisos."},
+  "lasaña":               {c:"acceptable", r:"La pasta de lasaña es baja en purinas; cuida el relleno que uses."},
+  "maiz":                 {c:"acceptable", r:"El maíz es muy bajo en purinas y seguro para incluir regularmente en la dieta."},
+  "maíz":                 {c:"acceptable", r:"El maíz es muy bajo en purinas y seguro para incluir regularmente en la dieta."},
+  "palomitas":            {c:"acceptable", r:"Las palomitas de maíz sin mantequilla en exceso son bajas en purinas."},
+  "polenta":              {c:"acceptable", r:"La polenta (harina de maíz) es baja en purinas y una buena alternativa al arroz."},
+  "tapioca":              {c:"acceptable", r:"La tapioca es prácticamente libre de purinas y muy bien tolerada."},
+  "galletas":             {c:"acceptable", r:"Las galletas sin relleno de carne son bajas en purinas; modera las azucaradas por otras razones de salud."},
+  "galleta":              {c:"acceptable", r:"La galleta es baja en purinas; modera el consumo de las muy azucaradas."},
+  "cereales":             {c:"acceptable", r:"La mayoría de los cereales de desayuno sin azúcar añadida son bajos en purinas."},
+
+  // Patatas y tubérculos
+  "patata":               {c:"acceptable", r:"La patata es muy baja en purinas y su potasio puede ayudar a la función renal."},
+  "patatas":              {c:"acceptable", r:"Las patatas son muy bajas en purinas y un carbohidrato excelente para la hiperuricemia."},
+  "patata cocida":        {c:"acceptable", r:"La patata cocida es una de las mejores guarniciones: baja en purinas y nutritiva."},
+  "patata al horno":      {c:"acceptable", r:"La patata al horno es baja en purinas; evita acompañarla con carnes ricas en purinas."},
+  "puré de patatas":      {c:"acceptable", r:"El puré de patatas (con leche y mantequilla) es bajo en purinas y fácilmente digerible."},
+  "boniato":              {c:"acceptable", r:"El boniato es bajo en purinas, rico en vitaminas y una excelente elección."},
+  "batata":               {c:"acceptable", r:"La batata (boniato) es baja en purinas y aporta antioxidantes beneficiosos."},
+  "yuca":                 {c:"acceptable", r:"La yuca es baja en purinas y una buena fuente de carbohidratos."},
+
+  // Frutas
+  "manzana":              {c:"acceptable", r:"La manzana es muy baja en purinas; la mayoría de las frutas son seguras en la hiperuricemia."},
+  "pera":                 {c:"acceptable", r:"La pera es baja en purinas y su alto contenido en agua ayuda a eliminar el ácido úrico."},
+  "platano":              {c:"acceptable", r:"El plátano es bajo en purinas; su potasio puede favorecer la función renal."},
+  "plátano":              {c:"acceptable", r:"El plátano es bajo en purinas; su potasio puede favorecer la función renal."},
+  "banana":               {c:"acceptable", r:"El plátano es bajo en purinas; su potasio puede favorecer la función renal."},
+  "naranja":              {c:"acceptable", r:"La naranja es baja en purinas y su vitamina C puede contribuir a reducir el ácido úrico."},
+  "mandarina":            {c:"acceptable", r:"La mandarina es baja en purinas y una buena fuente de vitamina C antiinflamatoria."},
+  "limon":                {c:"acceptable", r:"El limón es bajo en purinas; el ácido cítrico puede neutralizar el ácido úrico y facilitar su excreción."},
+  "limón":                {c:"acceptable", r:"El limón es bajo en purinas; el ácido cítrico puede neutralizar el ácido úrico y facilitar su excreción."},
+  "pomelo":               {c:"acceptable", r:"El pomelo es bajo en purinas y rico en vitamina C; consulta con tu médico si tomas medicación."},
+  "uva":                  {c:"acceptable", r:"La uva es baja en purinas y una opción segura; modera la cantidad por su contenido en azúcar."},
+  "uvas":                 {c:"acceptable", r:"Las uvas son bajas en purinas; consúmelas con moderación por su contenido en azúcar."},
+  "sandia":               {c:"acceptable", r:"La sandía es muy baja en purinas y su alto contenido en agua favorece la eliminación del ácido úrico."},
+  "sandía":               {c:"acceptable", r:"La sandía es muy baja en purinas y su alto contenido en agua favorece la eliminación del ácido úrico."},
+  "melon":                {c:"acceptable", r:"El melón es bajo en purinas y muy hidratante, lo que ayuda a eliminar el ácido úrico."},
+  "melón":                {c:"acceptable", r:"El melón es bajo en purinas y muy hidratante, lo que ayuda a eliminar el ácido úrico."},
+  "melocoton":            {c:"acceptable", r:"El melocotón es bajo en purinas y una fruta muy recomendable en esta condición."},
+  "melocotón":            {c:"acceptable", r:"El melocotón es bajo en purinas y una fruta muy recomendable en esta condición."},
+  "nectarina":            {c:"acceptable", r:"La nectarina es baja en purinas y una excelente fuente de vitaminas antioxidantes."},
+  "albaricoque":          {c:"acceptable", r:"El albaricoque es bajo en purinas y su vitamina A tiene propiedades antiinflamatorias."},
+  "ciruela":              {c:"acceptable", r:"La ciruela es baja en purinas y puede ayudar a regular el tránsito intestinal."},
+  "cereza":               {c:"acceptable", r:"Las cerezas son bajas en purinas y tienen propiedades antiinflamatorias que pueden reducir los ataques de gota."},
+  "cerezas":              {c:"acceptable", r:"Las cerezas son especialmente recomendadas: bajas en purinas y con efectos antiinflamatorios documentados."},
+  "fresa":                {c:"acceptable", r:"Las fresas son bajas en purinas y su vitamina C puede ayudar a reducir los niveles de ácido úrico."},
+  "fresas":               {c:"acceptable", r:"Las fresas son bajas en purinas y ricas en vitamina C antiinflamatoria; muy recomendables."},
+  "frambuesa":            {c:"acceptable", r:"Las frambuesas son bajas en purinas y tienen propiedades antioxidantes beneficiosas."},
+  "frambuesas":           {c:"acceptable", r:"Las frambuesas son bajas en purinas y una excelente fuente de antioxidantes."},
+  "arandanos":            {c:"acceptable", r:"Los arándanos son muy bajos en purinas y sus antioxidantes pueden reducir la inflamación."},
+  "arándanos":            {c:"acceptable", r:"Los arándanos son muy bajos en purinas y sus antioxidantes pueden reducir la inflamación."},
+  "arandano":             {c:"acceptable", r:"El arándano es muy bajo en purinas y tiene potentes propiedades antioxidantes."},
+  "arándano":             {c:"acceptable", r:"El arándano es muy bajo en purinas y tiene potentes propiedades antioxidantes."},
+  "moras":                {c:"acceptable", r:"Las moras son bajas en purinas y ricas en vitamina C y antioxidantes beneficiosos."},
+  "mora":                 {c:"acceptable", r:"La mora es baja en purinas y una excelente fuente de antioxidantes."},
+  "kiwi":                 {c:"acceptable", r:"El kiwi es bajo en purinas y su vitamina C puede contribuir a la reducción del ácido úrico."},
+  "pina":                 {c:"acceptable", r:"La piña es baja en purinas y su enzima bromelina tiene propiedades antiinflamatorias."},
+  "piña":                 {c:"acceptable", r:"La piña es baja en purinas y su enzima bromelina tiene propiedades antiinflamatorias."},
+  "mango":                {c:"acceptable", r:"El mango es bajo en purinas y una fuente rica en vitaminas antioxidantes."},
+  "papaya":               {c:"acceptable", r:"La papaya es baja en purinas y su enzima papaína tiene efectos antiinflamatorios."},
+  "aguacate":             {c:"acceptable", r:"El aguacate es muy bajo en purinas y sus grasas monoinsaturadas son saludables para el corazón."},
+  "coco":                 {c:"acceptable", r:"El coco es bajo en purinas; el agua de coco ayuda a la hidratación y la eliminación del ácido úrico."},
+  "higo":                 {c:"acceptable", r:"Los higos son bajos en purinas y una fuente natural de energía de fácil digestión."},
+  "higos":                {c:"acceptable", r:"Los higos son bajos en purinas; consúmelos con moderación por su contenido en azúcar."},
+  "datil":                {c:"acceptable", r:"Los dátiles son bajos en purinas; modera su consumo por su elevado contenido en azúcares."},
+  "dátil":                {c:"acceptable", r:"Los dátiles son bajos en purinas; modera su consumo por su elevado contenido en azúcares."},
+  "granada":              {c:"acceptable", r:"La granada es baja en purinas y tiene potentes propiedades antiinflamatorias y antioxidantes."},
+  "lichi":                {c:"acceptable", r:"El lichi es bajo en purinas y una fruta tropical segura para la hiperuricemia."},
+  "caqui":                {c:"acceptable", r:"El caqui es bajo en purinas y una fruta otoñal rica en vitamina A y C."},
+
+  // Verduras permitidas
+  "lechuga":              {c:"acceptable", r:"La lechuga es extremadamente baja en purinas y una base ideal para ensaladas."},
+  "tomate":               {c:"acceptable", r:"El tomate es bajo en purinas; su licopeno tiene propiedades antioxidantes beneficiosas."},
+  "tomates":              {c:"acceptable", r:"Los tomates son bajos en purinas; su licopeno tiene propiedades antioxidantes beneficiosas."},
+  "pepino":               {c:"acceptable", r:"El pepino es muy bajo en purinas y su alto contenido en agua favorece la eliminación del ácido úrico."},
+  "zanahoria":            {c:"acceptable", r:"La zanahoria es muy baja en purinas y segura para consumir con libertad."},
+  "zanahorias":           {c:"acceptable", r:"Las zanahorias son bajas en purinas y ricas en betacaroteno con propiedades antiinflamatorias."},
+  "pimiento":             {c:"acceptable", r:"El pimiento es muy bajo en purinas y especialmente rico en vitamina C, que ayuda a reducir el ácido úrico."},
+  "pimiento rojo":        {c:"acceptable", r:"El pimiento rojo es muy bajo en purinas y tiene el mayor contenido de vitamina C."},
+  "pimiento verde":       {c:"acceptable", r:"El pimiento verde es muy bajo en purinas y una buena fuente de vitamina C."},
+  "cebolla":              {c:"acceptable", r:"La cebolla es muy baja en purinas y sus compuestos azufrados tienen propiedades antiinflamatorias."},
+  "cebolleta":            {c:"acceptable", r:"La cebolleta es baja en purinas y puede usarse libremente como condimento."},
+  "ajo":                  {c:"acceptable", r:"El ajo es muy bajo en purinas y sus compuestos activos pueden tener efectos antiinflamatorios."},
+  "apio":                 {c:"acceptable", r:"El apio es muy bajo en purinas y se usa tradicionalmente como remedio natural para la gota."},
+  "brocoli":              {c:"acceptable", r:"El brócoli es bajo en purinas y su vitamina C puede contribuir a reducir el ácido úrico."},
+  "brócoli":              {c:"acceptable", r:"El brócoli es bajo en purinas y su vitamina C puede contribuir a reducir el ácido úrico."},
+  "col":                  {c:"acceptable", r:"La col es baja en purinas y una verdura muy nutritiva para incluir en la dieta."},
+  "repollo":              {c:"acceptable", r:"El repollo es bajo en purinas y una fuente saludable de vitaminas K y C."},
+  "col lombarda":         {c:"acceptable", r:"La col lombarda es baja en purinas y rica en antocianinas con efectos antiinflamatorios."},
+  "coles de bruselas":    {c:"caution", r:"Las coles de Bruselas tienen purinas bajas-moderadas; las purinas vegetales tienen menor impacto que las animales."},
+  "calabacin":            {c:"acceptable", r:"El calabacín es muy bajo en purinas y una verdura muy versátil."},
+  "calabacín":            {c:"acceptable", r:"El calabacín es muy bajo en purinas y una verdura muy versátil."},
+  "calabaza":             {c:"acceptable", r:"La calabaza es baja en purinas y su alto contenido en agua favorece la hidratación."},
+  "berenjena":            {c:"acceptable", r:"La berenjena es baja en purinas y puede tomarse con libertad en la dieta."},
+  "alcachofa":            {c:"acceptable", r:"La alcachofa es baja en purinas y favorece la función hepática y la eliminación de toxinas."},
+  "judias verdes":        {c:"acceptable", r:"Las judías verdes (vainas) son bajas en purinas y una excelente guarnición."},
+  "judías verdes":        {c:"acceptable", r:"Las judías verdes (vainas) son bajas en purinas y una excelente guarnición."},
+  "vainas":               {c:"acceptable", r:"Las vainas (judías verdes) son muy bajas en purinas y una guarnición muy recomendable."},
+  "puerro":               {c:"acceptable", r:"El puerro es bajo en purinas y puede usarse libremente como base de sopas y guisos."},
+  "remolacha":            {c:"acceptable", r:"La remolacha es baja en purinas y su contenido en nitratos puede favorecer la circulación."},
+  "rabano":               {c:"acceptable", r:"El rábano es muy bajo en purinas y puede ayudar a estimular la función renal."},
+  "rábano":               {c:"acceptable", r:"El rábano es muy bajo en purinas y puede ayudar a estimular la función renal."},
+  "nabo":                 {c:"acceptable", r:"El nabo es bajo en purinas y una verdura de temporada nutritiva y bien tolerada."},
+  "endibia":              {c:"acceptable", r:"La endibia es muy baja en purinas y una opción ideal para ensaladas."},
+  "escarola":             {c:"acceptable", r:"La escarola es baja en purinas y una buena alternativa a la lechuga."},
+  "canonigos":            {c:"acceptable", r:"Los canónigos son muy bajos en purinas y ricos en vitaminas K y C."},
+  "canónigos":            {c:"acceptable", r:"Los canónigos son muy bajos en purinas y ricos en vitaminas K y C."},
+  "rucula":               {c:"acceptable", r:"La rúcula es baja en purinas y aporta un interesante perfil nutricional."},
+  "rúcula":               {c:"acceptable", r:"La rúcula es baja en purinas y aporta un interesante perfil nutricional."},
+  "berros":               {c:"acceptable", r:"Los berros son bajos en purinas y ricos en vitamina C y compuestos antiinflamatorios."},
+  "perejil":              {c:"acceptable", r:"El perejil es bajo en purinas y sus flavonoides pueden tener efectos antiinflamatorios."},
+  "cilantro":             {c:"acceptable", r:"El cilantro es bajo en purinas y puede usarse libremente como hierba aromática."},
+  "albahaca":             {c:"acceptable", r:"La albahaca es baja en purinas y puede usarse libremente en la cocina."},
+  "romero":               {c:"acceptable", r:"El romero es bajo en purinas y tiene propiedades antiinflamatorias y antioxidantes."},
+  "tomillo":              {c:"acceptable", r:"El tomillo es bajo en purinas y puede usarse libremente como hierba aromática."},
+  "oregano":              {c:"acceptable", r:"El orégano es bajo en purinas y tiene propiedades antibacterianas naturales."},
+  "orégano":              {c:"acceptable", r:"El orégano es bajo en purinas y tiene propiedades antibacterianas naturales."},
+
+  // Frutos secos y semillas
+  "nueces":               {c:"acceptable", r:"Las nueces son bajas en purinas y ricas en omega-3 con propiedades antiinflamatorias."},
+  "almendras":            {c:"acceptable", r:"Las almendras son bajas en purinas y una excelente fuente de proteínas vegetales y grasas saludables."},
+  "avellanas":            {c:"acceptable", r:"Las avellanas son bajas en purinas y una buena fuente de vitamina E y grasas saludables."},
+  "pistachos":            {c:"acceptable", r:"Los pistachos son bajos en purinas y aportan grasas saludables y proteínas vegetales."},
+  "anacardos":            {c:"acceptable", r:"Los anacardos son bajos en purinas y una fuente de proteínas vegetales bien tolerada."},
+  "cacahuetes":           {c:"acceptable", r:"Los cacahuetes son bajos en purinas y una fuente de proteína vegetal asequible."},
+  "cacahuete":            {c:"acceptable", r:"El cacahuete es bajo en purinas y una buena fuente de proteínas vegetales."},
+  "pipas":                {c:"acceptable", r:"Las pipas de girasol son bajas en purinas y ricas en vitamina E antioxidante."},
+  "pipas de girasol":     {c:"acceptable", r:"Las pipas de girasol son bajas en purinas y ricas en vitamina E antioxidante."},
+  "semillas de chia":     {c:"acceptable", r:"Las semillas de chía son bajas en purinas y ricas en omega-3 antiinflamatorios."},
+  "semillas de chía":     {c:"acceptable", r:"Las semillas de chía son bajas en purinas y ricas en omega-3 antiinflamatorios."},
+  "semillas de lino":     {c:"acceptable", r:"Las semillas de lino son bajas en purinas y sus lignanos tienen propiedades antiinflamatorias."},
+  "sesamo":               {c:"acceptable", r:"El sésamo es bajo en purinas y una buena fuente de calcio y grasas saludables."},
+  "sésamo":               {c:"acceptable", r:"El sésamo es bajo en purinas y una buena fuente de calcio y grasas saludables."},
+
+  // Aceites y condimentos
+  "aceite de oliva":      {c:"acceptable", r:"El aceite de oliva es prácticamente libre de purinas y sus propiedades antiinflamatorias apoyan el manejo de la gota."},
+  "aceite de girasol":    {c:"acceptable", r:"El aceite de girasol es muy bajo en purinas; úsalo con moderación por su contenido en omega-6."},
+  "vinagre":              {c:"acceptable", r:"El vinagre es muy bajo en purinas y puede usarse libremente como condimento."},
+  "sal":                  {c:"acceptable", r:"La sal no contiene purinas, aunque debes limitar el sodio por la salud cardiovascular y renal."},
+  "miel":                 {c:"acceptable", r:"La miel es baja en purinas; modera su uso por su contenido en fructosa, que en exceso puede elevar el ácido úrico."},
+  "mermelada":            {c:"acceptable", r:"La mermelada es baja en purinas, pero modera su consumo por el alto contenido en azúcar."},
+  "tofu":                 {c:"acceptable", r:"El tofu tiene purinas moderadas, pero las purinas de la soja tienen un impacto menor en el ácido úrico."},
+  "aceitunas":            {c:"acceptable", r:"Las aceitunas son bajas en purinas y ricas en grasas monoinsaturadas saludables."},
+
+  // Bebidas
+  "agua":                 {c:"acceptable", r:"El agua es la mejor bebida para la hiperuricemia: mantenerse bien hidratado ayuda al riñón a eliminar el ácido úrico."},
+  "agua mineral":         {c:"acceptable", r:"El agua mineral, especialmente la bicarbonatada, puede favorecer la eliminación del ácido úrico."},
+  "cafe":                 {c:"acceptable", r:"El café se ha asociado con niveles más bajos de ácido úrico en estudios; consúmelo sin azúcar."},
+  "café":                 {c:"acceptable", r:"El café se ha asociado con niveles más bajos de ácido úrico en estudios; consúmelo sin azúcar."},
+  "cafe solo":            {c:"acceptable", r:"El café solo (sin azúcar) puede contribuir a reducir los niveles de ácido úrico."},
+  "té":                   {c:"acceptable", r:"El té es bajo en purinas y el té verde puede tener efectos leves sobre el ácido úrico."},
+  "te":                   {c:"acceptable", r:"El té es bajo en purinas y el té verde puede tener efectos leves sobre el ácido úrico."},
+  "té verde":             {c:"acceptable", r:"El té verde es bajo en purinas y sus catequinas tienen propiedades antiinflamatorias y antioxidantes."},
+  "te verde":             {c:"acceptable", r:"El té verde es bajo en purinas y sus catequinas tienen propiedades antiinflamatorias y antioxidantes."},
+  "manzanilla":           {c:"acceptable", r:"La infusión de manzanilla es baja en purinas y tiene un efecto calmante beneficioso."},
+  "infusion":             {c:"acceptable", r:"Las infusiones de plantas son generalmente muy bajas en purinas y bien toleradas."},
+  "infusión":             {c:"acceptable", r:"Las infusiones de plantas son generalmente muy bajas en purinas y bien toleradas."},
+  "zumo de naranja":      {c:"acceptable", r:"El zumo natural de naranja es bajo en purinas; su vitamina C puede ayudar. Modera la cantidad por el azúcar."},
+  "zumo de limon":        {c:"acceptable", r:"El zumo de limón es bajo en purinas y el ácido cítrico puede favorecer la excreción del ácido úrico."},
+  "zumo de limón":        {c:"acceptable", r:"El zumo de limón es bajo en purinas y el ácido cítrico puede favorecer la excreción del ácido úrico."},
+  "limonada":             {c:"acceptable", r:"La limonada natural sin azúcar es baja en purinas y puede ayudar a alcalinizar la orina."},
+  "horchata":             {c:"acceptable", r:"La horchata de chufa es baja en purinas y una bebida refrescante bien tolerada."},
+  "leche de avena":       {c:"caution", r:"La leche de avena tiene un contenido moderado de purinas por la avena; úsala con moderación."},
+  "leche de soja":        {c:"caution", r:"La leche de soja tiene purinas moderadas; las purinas vegetales tienen menor impacto pero hay que moderarla."},
+  "leche de almendras":   {c:"acceptable", r:"La leche de almendras es muy baja en purinas y una buena alternativa vegetal a la leche de vaca."},
+};
+
+// ════════════════════════════
+const config = {
+  prohibited: { icon:"🚫", badgeText:"Prohibido",       className:"prohibited" },
+  caution:    { icon:"⚠️", badgeText:"Con moderación",  className:"caution"   },
+  acceptable: { icon:"✅", badgeText:"Permitido",        className:"acceptable"}
+};
+
+const total = Object.keys(foodDatabase).length;
+document.getElementById('dbCount').textContent = `Base de datos: ${total} alimentos`;
+
+function normalize(str) {
+  return str.trim().toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/\s+/g,' ');
+}
+
+function findFood(query) {
+  const q = normalize(query);
+  for (const [key,val] of Object.entries(foodDatabase))
+    if (normalize(key)===q) return {key,...val};
+  for (const [key,val] of Object.entries(foodDatabase)) {
+    const nk = normalize(key);
+    if (q.includes(nk)||nk.includes(q)) return {key,...val};
+  }
+  return null;
+}
+
+function getSuggestions(query) {
+  if (query.length<2) return [];
+  const q = normalize(query);
+  const seen = new Set();
+  return Object.entries(foodDatabase)
+    .filter(([key])=>{ const nk=normalize(key); return nk.includes(q); })
+    .filter(([key])=>{ if(seen.has(normalize(key)))return false; seen.add(normalize(key)); return true; })
+    .slice(0,8)
+    .map(([key,val])=>({key, category:val.c}));
+}
+
+const input = document.getElementById('foodInput');
+const sugBox = document.getElementById('suggestions');
+
+input.addEventListener('input',()=>{
+  const sug = getSuggestions(input.value);
+  if(!sug.length || !input.value.trim()){ sugBox.classList.remove('open'); sugBox.innerHTML=''; return; }
+  sugBox.innerHTML = sug.map(s=>`
+    <div class="suggestion-item" onclick="selectSuggestion('${escapeHtml(s.key)}')">
+      <span class="sug-dot ${s.category}"></span>${escapeHtml(s.key)}
+    </div>`).join('');
+  sugBox.classList.add('open');
+});
+
+function selectSuggestion(value){
+  input.value = value;
+  sugBox.classList.remove('open');
+  sugBox.innerHTML = '';
+  checkFood();
+}
+
+document.addEventListener('click',e=>{ if(!e.target.closest('.autocomplete-wrapper')) sugBox.classList.remove('open'); });
+input.addEventListener('keydown',e=>{ if(e.key==='Enter'){sugBox.classList.remove('open');checkFood();} if(e.key==='Escape') sugBox.classList.remove('open'); });
+
+function checkFood(){
+  const resultDiv = document.getElementById('result');
+  const query = input.value.trim();
+  sugBox.classList.remove('open');
+  if(!query){ input.focus(); input.style.borderColor='var(--red-badge)'; setTimeout(()=>input.style.borderColor='',900); return; }
+  const found = findFood(query);
+  resultDiv.style.display='none';
+  void resultDiv.offsetWidth;
+  let html='';
+  if(found){
+    const cfg=config[found.c];
+    html=`<div class="result-box ${cfg.className}">
+      <div class="result-top">
+        <div><div class="result-icon">${cfg.icon}</div><div class="food-name">${escapeHtml(query)}</div></div>
+        <span class="badge ${cfg.className}"><span class="badge-dot"></span>${cfg.badgeText}</span>
+      </div>
+      <p class="result-explanation">${escapeHtml(found.r)}</p>
+    </div>`;
+  } else {
+    html=`<div class="result-box not-found">
+      <div class="result-top">
+        <div><div class="result-icon">🔍</div><div class="food-name">${escapeHtml(query)}</div></div>
+        <span class="badge not-found"><span class="badge-dot"></span>No encontrado</span>
+      </div>
+      <p class="result-explanation"><strong>"${escapeHtml(query)}"</strong> no está en nuestra base de datos.
+      Consulta a tu médico o nutricionista para una orientación personalizada.</p>
+    </div>`;
+  }
+  resultDiv.innerHTML=html;
+  resultDiv.style.display='block';
+  resultDiv.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function escapeHtml(str){
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+</script>
+
+<script>
+// ── Service Worker (PWA offline) ──────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => console.log('SW registrado:', reg.scope))
+      .catch(err => console.warn('SW error:', err));
+  });
+}
+
+// ── Banner de instalación ─────────────────────────────
+let deferredPrompt = null;
+const installBtn = document.getElementById('installBtn');
+
+window.addEventListener('beforeinstallprompt', e => {
+  e.preventDefault();
+  deferredPrompt = e;
+  if (installBtn) {
+    installBtn.style.display = 'flex';
+    installBtn.addEventListener('click', async () => {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      if (outcome === 'accepted') installBtn.style.display = 'none';
+      deferredPrompt = null;
+    });
+  }
+});
+
+window.addEventListener('appinstalled', () => {
+  if (installBtn) installBtn.style.display = 'none';
+});
+</script>
+</body>
+</html>
